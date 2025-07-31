@@ -1,6 +1,5 @@
 from sqlmodel import create_engine, Session, SQLModel
 from settings.base import get_settings
-from .models import *
 
 
 def get_connection_string() -> str:
@@ -14,6 +13,7 @@ engine = create_engine(get_connection_string())
 
 
 def init_db():
+    import database.models
     SQLModel.metadata.create_all(engine)
 
 

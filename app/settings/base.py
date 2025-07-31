@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     DATABASE_NAME: str
     DATABASE_USER: str
     DATABASE_PASSWORD: str
+    CELERY_REDIS_URL: str
 
     model_config = SettingsConfigDict(env_file='.env')
 
