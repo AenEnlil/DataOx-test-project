@@ -7,7 +7,7 @@ from typing import Optional, List
 
 class Article(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    url: str
+    url: str = Field(unique=True)
     title: str
     content: str
     author: str
