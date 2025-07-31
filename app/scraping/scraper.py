@@ -125,6 +125,7 @@ class Scraper:
         date_timeout = timedelta(days=30) if first_try else timedelta(hours=1)
         self.border_date = current_date - date_timeout
         self.parser = ArticleParser()
+        self.first_try = first_try
 
     async def collect_articles_preliminary_information(self, page):
         """
@@ -153,15 +154,16 @@ class Scraper:
         return articles
 
     async def scrape(self):
+        logger.info(f'Scraping started(First launch: {self.first_try})')
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
             page = await context.new_page()
-            logger.info('scraping started')
 
             articles = await self.collect_articles_preliminary_information(page)
             await browser.close()
 
-        pprint.pprint(articles)
+        # pprint.pprint(articles)
+        return articles
 
-asyncio.run(Scraper('/world', first_try=True).scrape())
+# asyncio.run(Scraper('/world', first_try=False).scrape())
