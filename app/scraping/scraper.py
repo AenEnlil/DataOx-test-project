@@ -3,7 +3,7 @@ import random
 from datetime import datetime, timedelta
 import asyncio
 import logging
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, TimeoutError
 from tzlocal import get_localzone
 
 
@@ -153,14 +153,52 @@ class Scraper:
         logger.info('Preliminary information collected')
         return articles
 
+    async def check_session(self, page):
+        try:
+            await page.goto(self.url)
+            await page.wait_for_timeout(3000)
+            await page.wait_for_selector("#o-header-top-link-myaccount", timeout=5000)
+            return True
+        except TimeoutError:
+            print('error')
+            return False
+
+    async def check_paywall_in_article(self, page) -> bool:
+        """
+        Check is article blocked by paywall
+        :param page: current browser page
+        :return: Check result
+        """
+        try:
+            await page.wait_for_selector('#barrier-page', timeout=2000)
+            return True
+        except TimeoutError:
+            return False
+
+    async def collect_articles_details(self, articles, page):
+        print(articles)
+        for article in articles:
+            print(article)
+            url = self.site_base_url + article.get('url')
+            await page.goto(url)
+            await page.wait_for_timeout(1000)
+
+            if await self.check_paywall_in_article(page):
+                logger.info(f"Paywall in '{article.get('title')}' article. Url: {url}")
+                continue
+
+
     async def scrape(self):
         logger.info(f'Scraping started(First launch: {self.first_try})')
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
             page = await context.new_page()
+            if not await self.check_session(page):
+                return
 
             articles = await self.collect_articles_preliminary_information(page)
+            collected_articles = await self.collect_articles_details(articles, page)
             await browser.close()
 
         # pprint.pprint(articles)
