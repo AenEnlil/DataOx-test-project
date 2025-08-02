@@ -1,9 +1,12 @@
+import math
 import pprint
 import random
 from datetime import datetime, timedelta
 import asyncio
 import logging
 from re import sub
+from typing import List, Any
+
 from playwright.async_api import async_playwright, TimeoutError
 from tzlocal import get_localzone
 
@@ -176,6 +179,9 @@ class Scraper:
         self.parser = ArticleParser()
         self.first_try = first_try
 
+        self.articles_per_worker = 300
+        self.max_workers = 10
+
     async def collect_articles_preliminary_information(self, page):
         """
         Collects articles information that can be accessed from articles list. Such as article url, title, subtitle,
@@ -226,7 +232,6 @@ class Scraper:
             return False
 
     async def update_articles_with_details(self, articles, page):
-        logger.info('Collecting articles details')
 
         for article in articles:
             url = self.site_base_url + article.get('url')
@@ -245,7 +250,15 @@ class Scraper:
             logger.info(f"[Article details] Details of '{article.get('title')}' article collected. "
                         f"Waiting {waiting_time} seconds before continue")
             await asyncio.sleep(waiting_time)
-        logger.info('Articles details collected')
+
+    @staticmethod
+    def split_articles_into_batches(data: List[Any], batch_size: int) -> List[List[Any]]:
+        return [data[i:i+batch_size] for i in range(0, len(data), batch_size)]
+
+    def calculate_articles_batch_size(self, articles_number: int) -> int:
+        num_workers = min(self.max_workers, math.ceil(articles_number / self.articles_per_worker))
+        batch_size = math.ceil(articles_number / num_workers)
+        return batch_size
 
     async def scrape(self):
         logger.info(f'Scraping started(First launch: {self.first_try})')
@@ -257,7 +270,15 @@ class Scraper:
                 return
 
             articles = await self.collect_articles_preliminary_information(page)
-            await self.update_articles_with_details(articles, page)
+
+            if articles:
+                logger.info('Collecting articles details')
+                batch_size = self.calculate_articles_batch_size(len(articles))
+                batches = self.split_articles_into_batches(articles, batch_size)
+                tasks = [self.update_articles_with_details(batch, await context.new_page()) for batch in batches]
+                await asyncio.gather(*tasks)
+                logger.info('Articles details collected')
+
             await browser.close()
 
         # pprint.pprint(articles)
