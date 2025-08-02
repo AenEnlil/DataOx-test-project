@@ -10,4 +10,5 @@ def scrape_ft():
     first_try = is_table_empty(Article)
 
     articles = asyncio.run(Scraper('/world', first_try=first_try).scrape())
-    bulk_insert_into_model(Article, articles)
+    if articles:
+        bulk_insert_into_model(Article, articles)

@@ -168,22 +168,23 @@ class Scraper:
         """
         articles = []
         continue_scraping = True
-        logger.info('Collecting preliminary articles information')
+        logger.info('[Article list] Collecting preliminary articles information')
 
         while continue_scraping:
-            logger.info(f'Scraping page {self.current_page}')
+            logger.info(f'[Article list] Scraping page {self.current_page}')
             await page.goto(f'{self.url}?page={self.current_page}')
             await page.wait_for_timeout(1000)
             parsed_articles, continue_scraping = await self.parser.parse_page(page, self.border_date)
             articles.extend(parsed_articles)
 
             waiting_time = random.uniform(5, 10)
-            logger.info(f'waiting {waiting_time} seconds before continue')
+            logger.info(f'[Article list] Page {self.current_page} scraped. '
+                        f'Waiting {waiting_time} seconds before continue')
             await asyncio.sleep(waiting_time)
 
             self.current_page += 1
 
-        logger.info('Preliminary information collected')
+        logger.info(f'[Article list] Preliminary information collected. Found {len(articles)} articles')
         return articles
 
     async def check_session(self, page):
@@ -209,9 +210,11 @@ class Scraper:
             return False
 
     async def update_articles_with_details(self, articles, page):
+        logger.info('Collecting articles details')
 
         for article in articles:
             url = self.site_base_url + article.get('url')
+            logger.info(f"[Article details] Collecting details for '{article.get('title')}' article. Url: {url}")
             await page.goto(url)
             await page.wait_for_timeout(1000)
 
@@ -223,7 +226,7 @@ class Scraper:
             article.update(**article_details)
 
             await asyncio.sleep(random.uniform(1, 3.5))
-
+        logger.info('Articles details collected')
 
     async def scrape(self):
         logger.info(f'Scraping started(First launch: {self.first_try})')
