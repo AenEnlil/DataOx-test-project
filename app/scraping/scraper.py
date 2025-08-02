@@ -89,8 +89,24 @@ class ArticleParser:
                 tags.append(primary_tag_text)
         return {'tags': tags}
 
+    async def check_if_article_should_be_skipped(self, article, skip_premium_article: bool = True) -> bool:
+        """
+        Skip article if it is ad, podcast or premium article(optional)
+        :param article: Article to check
+        :param skip_premium_article: Should premium article be skipped
+        :return: Check result
+        """
+        skip = False
+        if await article.query_selector(f'div.o-ads') or await article.query_selector('div.o-teaser--native-ad'):
+            skip = True
+        if await article.query_selector(f'{self.podcast_identifier_class}'):
+            skip = True
+        if skip_premium_article and await article.query_selector(f'span.o-labels--content-premium'):
+            skip = True
+        return skip
+
     async def parse_preliminary_information(self, article):
-        if await article.query_selector(f'div.o-ads') or await article.query_selector('div.o-teaser--native-ad') or await article.query_selector(f'{self.podcast_identifier_class}'):
+        if await self.check_if_article_should_be_skipped(article):
             return None
 
         data = {'scraped_at': datetime.now()}
@@ -225,7 +241,10 @@ class Scraper:
             article_details = await self.parser.parse_article_details(page)
             article.update(**article_details)
 
-            await asyncio.sleep(random.uniform(1, 3.5))
+            waiting_time = random.uniform(1, 3.5)
+            logger.info(f"[Article details] Details of '{article.get('title')}' article collected. "
+                        f"Waiting {waiting_time} seconds before continue")
+            await asyncio.sleep(waiting_time)
         logger.info('Articles details collected')
 
     async def scrape(self):
