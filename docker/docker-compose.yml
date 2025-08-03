@@ -39,6 +39,8 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_PORT: 5432
       CELERY_REDIS_URL: redis://redis:6379/0
+      FTSESSION_S_COOKIE: ${FTSESSION_S_COOKIE}
+      FTSESSION_S_COOKIE_EXPIRES: ${FTSESSION_S_COOKIE_EXPIRES}
     build:
       context: ../app
       dockerfile: 'Dockerfile'
@@ -62,7 +64,8 @@ services:
       DATABASE_HOST: database
       DATABASE_PORT: 5432
       CELERY_REDIS_URL: redis://redis:6379/0
-
+      FTSESSION_S_COOKIE: ${FTSESSION_S_COOKIE}
+      FTSESSION_S_COOKIE_EXPIRES: ${FTSESSION_S_COOKIE_EXPIRES}
   celery_beat:
     build:
       context: ../app
@@ -78,6 +81,8 @@ services:
       DATABASE_HOST: database
       DATABASE_PORT: 5432
       CELERY_REDIS_URL: redis://redis:6379/0
+      FTSESSION_S_COOKIE: ${FTSESSION_S_COOKIE}
+      FTSESSION_S_COOKIE_EXPIRES: ${FTSESSION_S_COOKIE_EXPIRES}
 
 volumes:
   redis-data:
