@@ -24,6 +24,8 @@ class ArticleParser:
     article_header_class = 'o-teaser__heading'
     article_subtitle_class = 'o-teaser__standfirst'
     article_body_selector = '#article-body'
+    article_x_live_blog_class = 'article.x-live-blog-post'
+    article_x_live_blog_body_class = f'div.article--body'
     article_author_class = 'a.o3-editorial-typography-byline-author'
     article_tags_list_class = 'a.concept-list__concept'
     article_primary_tag_class = 'a.o-topper__topic'
@@ -70,8 +72,32 @@ class ArticleParser:
             text = await subtitle_p.text_content()
             return text
 
+    async def parse_x_live_blog_article(self, page) -> dict:
+        """
+        Parses X live blog article type
+        :param page: current page
+        :return: text and word cound
+        """
+        article_text, word_count = '', 0
+        articles_blocks = await page.query_selector_all(self.article_x_live_blog_body_class)
+        articles_paragraphs = [await article.query_selector_all('p') for article in articles_blocks]
+        for paragraph_block in articles_paragraphs:
+            for paragraph in paragraph_block:
+                text = await paragraph.text_content()
+                article_text += text
+                word_count += len(text.split())
+        return {'content': article_text, 'word_count': word_count}
+
     async def collect_article_content(self, page) -> dict:
-        # todo: maybe change to locator for more precise text, clean text from whitespace, handle iframes
+        """
+        Collects article text from page. Logic depends on article type
+        :param page: current page
+        :return: text and word count
+        """
+
+        if await page.query_selector(self.article_x_live_blog_class):
+            return await self.parse_x_live_blog_article(page)
+
         article_body = await page.query_selector(self.article_body_selector)
         article_text = await article_body.text_content()
         word_count = len(article_text.split())
