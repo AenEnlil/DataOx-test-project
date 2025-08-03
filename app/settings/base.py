@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     DATABASE_USER: str
     DATABASE_PASSWORD: str
     CELERY_REDIS_URL: str
+    FTSESSION_S_COOKIE: str
+    FTSESSION_S_COOKIE_EXPIRES: float
 
     model_config = SettingsConfigDict(env_file='.env')
 

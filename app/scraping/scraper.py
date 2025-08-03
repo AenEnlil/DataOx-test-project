@@ -10,6 +10,7 @@ from typing import List, Any
 from playwright.async_api import async_playwright, TimeoutError
 from tzlocal import get_localzone
 
+from settings.base import get_settings
 
 local_tz = get_localzone()
 
@@ -193,6 +194,10 @@ class Scraper:
         self.articles_per_worker = 300
         self.max_workers = 10
 
+        settings = get_settings()
+        self.session = settings.FTSESSION_S_COOKIE
+        self.session_expires = settings.FTSESSION_S_COOKIE_EXPIRES
+
     async def collect_articles_preliminary_information(self, page):
         """
         Collects articles information that can be accessed from articles list. Such as article url, title, subtitle,
@@ -276,6 +281,9 @@ class Scraper:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
+            await context.add_cookies([{"name": "FTSession_s", "value": self.session, "domain": ".ft.com", "path": "/",
+                                        "expires": self.session_expires, "httpOnly": False, "secure": True,
+                                        "sameSite": "Lax"}])
             page = await context.new_page()
             if not await self.check_session(page):
                 return
