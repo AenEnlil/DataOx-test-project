@@ -286,7 +286,8 @@ class Scraper:
     async def update_articles_with_details(self, articles, page):
         for article in articles:
             try:
-                url = self.site_base_url + article.get('url')
+                saved_url = article.get('url')
+                url = self.site_base_url + saved_url if 'https' not in saved_url else saved_url
                 logger.info(f"[Article details] Collecting details for '{article.get('title')}' article. Url: {url}")
                 await page.goto(url)
                 await page.wait_for_timeout(1000)
@@ -305,9 +306,11 @@ class Scraper:
                 await asyncio.sleep(waiting_time)
 
             except Exception as e:
+                waiting_time = random.uniform(1, 3.5)
                 logger.error(f"[Article details] Exception {e} occurred in '{article.get('title')}' article. "
                              f"Url: {article.get('url')} "
-                             f"Skipping this article")
+                             f"Skipping this article in {waiting_time} seconds")
+                await asyncio.sleep(waiting_time)
                 continue
 
     @staticmethod
@@ -334,7 +337,6 @@ class Scraper:
             articles = await self.collect_articles_preliminary_information(page)
 
             if articles:
-                logger.info('Collecting articles details')
                 batch_size = self.calculate_articles_batch_size(len(articles))
                 batches = self.split_articles_into_batches(articles, batch_size)
                 logger.info(f'Collecting articles details. Workers: {len(batches)}, Batch size: {batch_size}')
