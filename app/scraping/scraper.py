@@ -334,7 +334,9 @@ class Scraper:
                 saved_url = article.get('url')
                 url = self.site_base_url + saved_url if 'https' not in saved_url else saved_url
                 logger.info(f"[Article details] Collecting details for '{article.get('title')}' article. Url: {url}")
-                await page.goto(url)
+                success = await self.safe_goto(page, url)
+                if not success:
+                    raise Exception('Failed to scrape details')
                 await page.wait_for_timeout(1000)
 
                 if await self.check_paywall_in_article(page):
@@ -368,6 +370,7 @@ class Scraper:
         return batch_size
 
     async def scrape(self):
+        cleared_articles = []
         logger.info(f'Scraping started(First launch: {self.first_try})')
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -388,10 +391,12 @@ class Scraper:
                 tasks = [self.update_articles_with_details(batch, await context.new_page()) for batch in batches]
                 await asyncio.gather(*tasks)
                 logger.info('Articles details collected')
+                logger.info('Clearing articles without content')
+                cleared_articles = [article for article in articles if 'content' in article.keys()]
+                logger.info('Articles cleared')
 
             await browser.close()
 
-        # pprint.pprint(articles)
-        return articles
+        return cleared_articles
 
 # asyncio.run(Scraper('/world', first_try=False).scrape())
