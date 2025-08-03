@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     CELERY_REDIS_URL: str
     FTSESSION_S_COOKIE: str
     FTSESSION_S_COOKIE_EXPIRES: float
+    SCRAPING_MAX_WORKERS: int = 10
+    SCRAPING_MAX_ARTICLES_PER_WORKER: int = 100
 
     model_config = SettingsConfigDict(env_file='.env')
 

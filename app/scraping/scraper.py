@@ -245,14 +245,13 @@ class Scraper:
         self.parser = ArticleParser()
         self.first_try = first_try
 
-        self.articles_per_worker = 100
-        self.max_workers = 10
-
         self.consecutive_failures = 0
 
         settings = get_settings()
         self.session = settings.FTSESSION_S_COOKIE
         self.session_expires = settings.FTSESSION_S_COOKIE_EXPIRES
+        self.articles_per_worker = settings.SCRAPING_MAX_ARTICLES_PER_WORKER
+        self.max_workers = settings.SCRAPING_MAX_WORKERS
 
     async def safe_goto(self, page, url, max_retries=3, delay=2) -> bool:
         for attempt in range(1, max_retries+1):
