@@ -6,6 +6,8 @@
     DATABASE_PORT - Postgresql database port. Example: 5432
     DATABASE_USER - Postgresql database user. Example: 'root'
     DATABASE_PASSWORD - Postgresql database password. Example: 'pass123'
+    FTSESSION_S_COOKIE - Financial times account session cookie value.
+    FTSESSION_S_COOKIE_EXPIRES - Financial times account session cookie expire timestamp
 
 # How to run application
 ## 1. Install Postgresql

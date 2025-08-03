@@ -3,6 +3,8 @@
 - POSTGRES_USER - Postgresql database user
 - POSTGRES_PASSWORD - Postgresql database user password
 - POSTGRES_DB - Postgresql database name
+- FTSESSION_S_COOKIE - Financial times account session cookie value.
+- FTSESSION_S_COOKIE_EXPIRES - Financial times account session cookie expire timestamp
 # How to start application with Docker
 ## 1. Install Docker and docker-compose
     Ubuntu:
