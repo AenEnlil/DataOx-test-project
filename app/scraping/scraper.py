@@ -201,7 +201,7 @@ class Scraper:
         self.parser = ArticleParser()
         self.first_try = first_try
 
-        self.articles_per_worker = 300
+        self.articles_per_worker = 100
         self.max_workers = 10
 
         settings = get_settings()
@@ -258,25 +258,31 @@ class Scraper:
             return False
 
     async def update_articles_with_details(self, articles, page):
-
         for article in articles:
-            url = self.site_base_url + article.get('url')
-            logger.info(f"[Article details] Collecting details for '{article.get('title')}' article. Url: {url}")
-            await page.goto(url)
-            await page.wait_for_timeout(1000)
+            try:
+                url = self.site_base_url + article.get('url')
+                logger.info(f"[Article details] Collecting details for '{article.get('title')}' article. Url: {url}")
+                await page.goto(url)
+                await page.wait_for_timeout(1000)
 
-            if await self.check_paywall_in_article(page):
-                logger.info(f"Paywall in '{article.get('title')}' article. Url: {url}")
+                if await self.check_paywall_in_article(page):
+                    logger.info(f"Paywall in '{article.get('title')}' article. Url: {url}")
+                    continue
+
+                collect_image = not bool(article.get('image_url'))
+                article_details = await self.parser.parse_article_details(page, collect_image)
+                article.update(**article_details)
+
+                waiting_time = random.uniform(1, 3.5)
+                logger.info(f"[Article details] Details of '{article.get('title')}' article collected. "
+                            f"Waiting {waiting_time} seconds before continue")
+                await asyncio.sleep(waiting_time)
+
+            except Exception as e:
+                logger.error(f"[Article details] Exception {e} occurred in '{article.get('title')}' article. "
+                             f"Url: {article.get('url')} "
+                             f"Skipping this article")
                 continue
-
-            collect_image = not bool(article.get('image_url'))
-            article_details = await self.parser.parse_article_details(page, collect_image)
-            article.update(**article_details)
-
-            waiting_time = random.uniform(1, 3.5)
-            logger.info(f"[Article details] Details of '{article.get('title')}' article collected. "
-                        f"Waiting {waiting_time} seconds before continue")
-            await asyncio.sleep(waiting_time)
 
     @staticmethod
     def split_articles_into_batches(data: List[Any], batch_size: int) -> List[List[Any]]:
@@ -305,6 +311,7 @@ class Scraper:
                 logger.info('Collecting articles details')
                 batch_size = self.calculate_articles_batch_size(len(articles))
                 batches = self.split_articles_into_batches(articles, batch_size)
+                logger.info(f'Collecting articles details. Workers: {len(batches)}, Batch size: {batch_size}')
                 tasks = [self.update_articles_with_details(batch, await context.new_page()) for batch in batches]
                 await asyncio.gather(*tasks)
                 logger.info('Articles details collected')
