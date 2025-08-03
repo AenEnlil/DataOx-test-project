@@ -27,6 +27,8 @@ class ArticleParser:
     article_author_class = 'a.o3-editorial-typography-byline-author'
     article_tags_list_class = 'a.concept-list__concept'
     article_primary_tag_class = 'a.o-topper__topic'
+    article_list_image_class = 'o-teaser__image-container'
+    article_details_image_class = 'main-image'
 
     podcast_identifier_class = 'span.o-teaser__tag-suffix'
 
@@ -53,9 +55,13 @@ class ArticleParser:
         title = await link_element.text_content()
         return link, title
 
-    async def collect_image(self, article):
-        image = await article.query_selector('img')
-        image_url = await image.get_attribute('data-src')
+    async def collect_image(self, article, from_details=False):
+        image_url = None
+        image_div_class = self.article_list_image_class if not from_details else self.article_details_image_class
+        image_div = await article.query_selector(f'div.{image_div_class}')
+        if image_div:
+            image = await article.query_selector('img')
+            image_url = await image.get_attribute('src')
         return image_url
 
     async def collect_subtitle(self, article):
@@ -132,7 +138,7 @@ class ArticleParser:
         data.update({'subtitle': subtitle})
         return data
 
-    async def parse_article_details(self, page) -> dict:
+    async def parse_article_details(self, page, collect_image: bool) -> dict:
         collected_data = {}
         collected_content = await self.collect_article_content(page)
         collected_data.update(**collected_content)
@@ -145,6 +151,10 @@ class ArticleParser:
 
         related_articles = await self.collect_related_articles(page)
         collected_data.update(**related_articles)
+
+        if collect_image:
+            image_url = await self.collect_image(page, from_details=True)
+            collected_data.update({'image_url': image_url})
 
         return collected_data
 
@@ -259,7 +269,8 @@ class Scraper:
                 logger.info(f"Paywall in '{article.get('title')}' article. Url: {url}")
                 continue
 
-            article_details = await self.parser.parse_article_details(page)
+            collect_image = not bool(article.get('image_url'))
+            article_details = await self.parser.parse_article_details(page, collect_image)
             article.update(**article_details)
 
             waiting_time = random.uniform(1, 3.5)
