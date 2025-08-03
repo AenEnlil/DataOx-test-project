@@ -248,9 +248,24 @@ class Scraper:
         self.articles_per_worker = 100
         self.max_workers = 10
 
+        self.consecutive_failures = 0
+
         settings = get_settings()
         self.session = settings.FTSESSION_S_COOKIE
         self.session_expires = settings.FTSESSION_S_COOKIE_EXPIRES
+
+    async def safe_goto(self, page, url, max_retries=3, delay=2) -> bool:
+        for attempt in range(1, max_retries+1):
+            try:
+                await page.goto(url, wait_until='load')
+                return True
+
+            except Exception as e:
+                logger.warning(f'[{attempt}/{max_retries}] Failed to navigate to {url}: {e}. Retry in {delay} seconds')
+                if attempt == max_retries:
+                    logger.error(f'Aborting navigation to {url}')
+                    return False
+                await asyncio.sleep(delay)
 
     async def collect_articles_preliminary_information(self, page):
         """
@@ -264,7 +279,19 @@ class Scraper:
 
         while continue_scraping:
             logger.info(f'[Article list] Scraping page {self.current_page}')
-            await page.goto(f'{self.url}?page={self.current_page}')
+            url = f'{self.url}?page={self.current_page}'
+            success = await self.safe_goto(page, url)
+            if not success:
+                self.consecutive_failures += 1
+                if self.consecutive_failures >= 5:
+                    logger.error(f'[Article list] Consecutive failures limit reached. Aborting scraping')
+                    break
+
+                logger.warning(f'[Article list] Skipping page {self.current_page}')
+                self.current_page += 1
+                continue
+
+            self.consecutive_failures = 0
             await page.wait_for_timeout(1000)
             parsed_articles, continue_scraping = await self.parser.parse_page(page, self.border_date)
             articles.extend(parsed_articles)
