@@ -26,6 +26,7 @@ class ArticleParser:
     article_body_selector = '#article-body'
     article_x_live_blog_class = 'article.x-live-blog-post'
     article_x_live_blog_body_class = f'div.article--body'
+    article_visual_class = 'article.article-body'
     article_author_class = 'a.o3-editorial-typography-byline-author'
     article_tags_list_class = 'a.concept-list__concept'
     article_primary_tag_class = 'a.o-topper__topic'
@@ -88,6 +89,21 @@ class ArticleParser:
                 word_count += len(text.split())
         return {'content': article_text, 'word_count': word_count}
 
+    async def parse_visual_article(self, page):
+        """
+        Parses visual article
+        :param page: current page
+        :return: text, word count
+        """
+        article_body = await page.query_selector(self.article_visual_class)
+        paragraphs = await article_body.query_selector_all('p')
+        article_text, word_count = '', 0
+        for paragraph in paragraphs:
+            text = await paragraph.text_content()
+            article_text += text
+            word_count += len(text.split())
+        return {'content': article_text, 'word_count': word_count}
+
     async def collect_article_content(self, page) -> dict:
         """
         Collects article text from page. Logic depends on article type
@@ -97,6 +113,8 @@ class ArticleParser:
 
         if await page.query_selector(self.article_x_live_blog_class):
             return await self.parse_x_live_blog_article(page)
+        if await page.query_selector(self.article_visual_class):
+            return await self.parse_visual_article(page)
 
         article_body = await page.query_selector(self.article_body_selector)
         article_text = await article_body.text_content()
