@@ -92,6 +92,14 @@ class ArticleParser:
                 tags.append(primary_tag_text)
         return {'tags': tags}
 
+    async def collect_related_articles(self, page) -> dict:
+        related_articles = []
+        articles_list = await page.query_selector('#onward-journey-collection')
+        if articles_list:
+            founded_articles = await articles_list.query_selector_all('a.js-teaser-heading-link')
+            related_articles = [await article.get_attribute('href') for article in founded_articles]
+        return {'related_articles': related_articles}
+
     async def check_if_article_should_be_skipped(self, article, skip_premium_article: bool = True) -> bool:
         """
         Skip article if it is ad, podcast or premium article(optional)
@@ -133,6 +141,9 @@ class ArticleParser:
 
         tags = await self.collect_tags(page)
         collected_data.update(**tags)
+
+        related_articles = await self.collect_related_articles(page)
+        collected_data.update(**related_articles)
 
         return collected_data
 

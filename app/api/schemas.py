@@ -16,6 +16,8 @@ class ArticleSchema(BaseModel):
     image_url: Optional[str] = None
     word_count: Optional[int] = None
     reading_time: Optional[str] = None
+    tags: Optional[List[str]] = None
+    related_articles: Optional[List[str]] = None
 
 
 class ArticleListSchema(BaseModel):
