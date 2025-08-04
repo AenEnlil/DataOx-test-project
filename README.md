@@ -47,7 +47,7 @@
 
 # How to run application
  ## with Docker
-- check deploy README (./docker/README.md)
+- [check deploy README] (./docker/README.md)
  ## manual
-- check application README (./app/README.md)
+- [check application README] (./app/README.md)
  

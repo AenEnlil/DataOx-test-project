@@ -195,7 +195,8 @@ class ArticleParser:
         :return: Check result
         """
         skip = False
-        if await article.query_selector(f'div.o-ads') or await article.query_selector('div.o-teaser--native-ad'):
+        if await article.query_selector(f'div.o-ads') or await article.query_selector('div.o-teaser--native-ad') \
+                or await article.query_selector('pg-slot.pg-slot'):
             skip = True
         if await article.query_selector(f'{self.podcast_identifier_class}'):
             skip = True
