@@ -7,7 +7,7 @@ import logging
 from re import sub
 from typing import List, Any
 
-from playwright.async_api import async_playwright, TimeoutError
+from playwright.async_api import async_playwright, TimeoutError, Page
 from tzlocal import get_localzone
 
 from settings.base import get_settings
@@ -36,6 +36,11 @@ class ArticleParser:
     podcast_identifier_class = 'span.o-teaser__tag-suffix'
 
     async def collect_publication_date(self, article):
+        """
+        Collects article publication date on given browser page
+        :param article: Playwright page
+        :return: publication date
+        """
         for date_class in self.article_date_classes:
             time_div = await article.query_selector(f'div.{date_class}')
             if time_div:
@@ -51,14 +56,25 @@ class ArticleParser:
         pub_date = datetime.fromisoformat(raw_date).astimezone(local_tz)
         return pub_date
 
-    async def collect_link_and_title(self, article):
+    async def collect_link_and_title(self, article) -> tuple[str, str]:
+        """
+        Collects link and title on given browser page
+        :param article: Playwright page
+        :return: link and title
+        """
         header = await article.query_selector(f'div.{self.article_header_class}')
         link_element = await header.query_selector('a')
         link = await link_element.get_attribute('href')
         title = await link_element.text_content()
         return link, title
 
-    async def collect_image(self, article, from_details=False):
+    async def collect_image(self, article, from_details=False) -> str or None:
+        """
+        Collect image url on given browser page
+        :param article: Playwright page
+        :param from_details: Page is article details?
+        :return:
+        """
         image_url = None
         image_div_class = self.article_list_image_class if not from_details else self.article_details_image_class
         image_div = await article.query_selector(f'div.{image_div_class}')
@@ -67,7 +83,12 @@ class ArticleParser:
             image_url = await image.get_attribute('src')
         return image_url
 
-    async def collect_subtitle(self, article):
+    async def collect_subtitle(self, article) -> str or None:
+        """
+        Collects subtitle on given browser page
+        :param article: Playwright page
+        :return: Collected subtitle
+        """
         subtitle_p = await article.query_selector(f'p.{self.article_subtitle_class}')
         if subtitle_p:
             text = await subtitle_p.text_content()
@@ -121,14 +142,24 @@ class ArticleParser:
         word_count = len(article_text.split())
         return {'content': article_text, 'word_count': word_count}
 
-    async def collect_author(self, page) -> dict:
+    async def collect_author(self, page: Page) -> dict:
+        """
+        Collects author on given browser page
+        :param page: Playwrright page
+        :return: Collected tags
+        """
         author = ''
         author_data = await page.query_selector_all(f'{self.article_author_class}')
         if author_data:
             author = ', '.join([await author_tag.text_content() for author_tag in author_data])
         return {'author': author}
 
-    async def collect_tags(self, page) -> dict:
+    async def collect_tags(self, page: Page) -> dict:
+        """
+        Collects tags in given browser page
+        :param page: Playwright page
+        :return: Collected tags
+        """
         tags = []
         tag_list = await page.query_selector_all(f'{self.article_tags_list_class}')
         if tag_list:
@@ -144,6 +175,11 @@ class ArticleParser:
         return {'tags': tags}
 
     async def collect_related_articles(self, page) -> dict:
+        """
+        Collects related articles on given page
+        :param page: Playwright page
+        :return: related articles
+        """
         related_articles = []
         articles_list = await page.query_selector('#onward-journey-collection')
         if articles_list:
@@ -167,7 +203,12 @@ class ArticleParser:
             skip = True
         return skip
 
-    async def parse_preliminary_information(self, article):
+    async def parse_preliminary_information(self, article) -> dict or None:
+        """
+        Parses article preliminary information(pub_data, link, title, subtitle)
+        :param article: Article
+        :return:
+        """
         if await self.check_if_article_should_be_skipped(article):
             return None
 
@@ -183,6 +224,12 @@ class ArticleParser:
         return data
 
     async def parse_article_details(self, page, collect_image: bool) -> dict:
+        """
+        Parses article details on given page
+        :param page: Playwright page
+        :param collect_image: Should image be parsed
+        :return: Parsed article details
+        """
         collected_data = {}
         collected_content = await self.collect_article_content(page)
         collected_data.update(**collected_content)
@@ -202,7 +249,13 @@ class ArticleParser:
 
         return collected_data
 
-    async def parse_page(self, page, border_date):
+    async def parse_page(self, page, border_date) -> tuple[List[dict], bool]:
+        """
+        Parses current browser page to collect preliminary articles information
+        :param page: Playwright page
+        :param border_date: Date until which to parse articles
+        :return: List of parsed articles and bool represents if scraping should continue
+        """
         parsed_articles, continue_scraping = [], True
         articles_list = await page.query_selector('ul.o-teaser-collection__list')
         articles = await articles_list.query_selector_all('li')
@@ -226,11 +279,8 @@ class ArticleParser:
         regex = r'{0}'.format(regex_pattern)
         return sub(regex, ' ', text).strip()
 
-class Scraper:
 
-    # ~65 pages to get all articles for month
-    # ~ 25 articles per page
-    # ~ 1600 articles
+class Scraper:
 
     article_class = 'o-teaser'
     site_base_url = 'https://www.ft.com'
@@ -253,7 +303,15 @@ class Scraper:
         self.articles_per_worker = settings.SCRAPING_MAX_ARTICLES_PER_WORKER
         self.max_workers = settings.SCRAPING_MAX_WORKERS
 
-    async def safe_goto(self, page, url, max_retries=3, delay=2) -> bool:
+    async def safe_goto(self, page: Page, url: str, max_retries=3, delay=2) -> bool:
+        """
+        Page navigation with retry logic
+        :param page: Playwright page
+        :param url: Url to navigate
+        :param max_retries: max retry attempts
+        :param delay: delay between tries
+        :return: result of navigating
+        """
         for attempt in range(1, max_retries+1):
             try:
                 await page.goto(url, wait_until='load')
@@ -266,11 +324,11 @@ class Scraper:
                     return False
                 await asyncio.sleep(delay)
 
-    async def collect_articles_preliminary_information(self, page):
+    async def collect_articles_preliminary_information(self, page: Page) -> List[dict]:
         """
         Collects articles information that can be accessed from articles list. Such as article url, title, subtitle,
         publication date
-        :return:
+        :return: list of collected articles
         """
         articles = []
         continue_scraping = True
@@ -305,7 +363,12 @@ class Scraper:
         logger.info(f'[Article list] Preliminary information collected. Found {len(articles)} articles')
         return articles
 
-    async def check_session(self, page):
+    async def check_session(self, page: Page) -> bool:
+        """
+        Check if user logged in
+        :param page: Playwright page
+        :return: Result of check
+        """
         try:
             await page.goto(self.url)
             await page.wait_for_timeout(3000)
@@ -315,7 +378,7 @@ class Scraper:
             print('error')
             return False
 
-    async def check_paywall_in_article(self, page) -> bool:
+    async def check_paywall_in_article(self, page: Page) -> bool:
         """
         Check is article blocked by paywall
         :param page: current browser page
@@ -327,7 +390,13 @@ class Scraper:
         except TimeoutError:
             return False
 
-    async def update_articles_with_details(self, articles, page):
+    async def update_articles_with_details(self, articles: list, page: Page):
+        """
+        Scrapes and update articles details for every articles in articles list
+        :param articles: list of articles
+        :param page: Playwright page
+        :return: None
+        """
         for article in articles:
             try:
                 saved_url = article.get('url')
@@ -361,14 +430,29 @@ class Scraper:
 
     @staticmethod
     def split_articles_into_batches(data: List[Any], batch_size: int) -> List[List[Any]]:
+        """
+        Split list of articles into batches of given size
+        :param data:
+        :param batch_size:
+        :return: List of batches
+        """
         return [data[i:i+batch_size] for i in range(0, len(data), batch_size)]
 
     def calculate_articles_batch_size(self, articles_number: int) -> int:
+        """
+        Calculates batch size of articles
+        :param articles_number: Number of articles
+        :return: calculated batch size
+        """
         num_workers = min(self.max_workers, math.ceil(articles_number / self.articles_per_worker))
         batch_size = math.ceil(articles_number / num_workers)
         return batch_size
 
-    async def scrape(self):
+    async def scrape(self) -> List[dict] or None:
+        """
+        Scrape articles from financial times world pages
+        :return: list of scraped articles
+        """
         cleared_articles = []
         logger.info(f'Scraping started(First launch: {self.first_try})')
         async with async_playwright() as p:
@@ -397,5 +481,3 @@ class Scraper:
             await browser.close()
 
         return cleared_articles
-
-# asyncio.run(Scraper('/world', first_try=False).scrape())
