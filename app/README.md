@@ -8,7 +8,9 @@
     DATABASE_PASSWORD - Postgresql database password. Example: 'pass123'
     FTSESSION_S_COOKIE - Financial times account session cookie value.
     FTSESSION_S_COOKIE_EXPIRES - Financial times account session cookie expire timestamp
-
+## Optional
+    SCRAPING_MAX_WORKERS - How many workers will be used to scrape data. Default: 10
+    SCRAPING_MAX_ARTICLES_PER_WORKER - How many articles should be processed by worker. Default: 100
 # How to run application
 ## 1. Install Postgresql
 ### Ubuntu
@@ -54,3 +56,5 @@
                 celery -A celery_app beat --loglevel=info
             3. Optional. In other terminal run API:
                 uvicorn main:py
+# How to run test
+    from app folder in terminal type "pytest tests"
