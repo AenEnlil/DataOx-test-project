@@ -5,6 +5,9 @@
 - POSTGRES_DB - Postgresql database name
 - FTSESSION_S_COOKIE - Financial times account session cookie value.
 - FTSESSION_S_COOKIE_EXPIRES - Financial times account session cookie expire timestamp
+## Optional
+- SCRAPING_MAX_WORKERS - How many workers will be used to scrape data. Default: 10
+- SCRAPING_MAX_ARTICLES_PER_WORKER - How many articles should be processed by worker. Default: 100
 # How to start application with Docker
 ## 1. Install Docker and docker-compose
     Ubuntu:
